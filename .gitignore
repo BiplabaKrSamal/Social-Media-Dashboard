@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ETL outputs — don't commit real data exports
+data/linkedin_followers.csv
+data/linkedin_updates.csv
+data/instagram_insights.csv
+# artstation_manual.csv IS committed (it's just a template with no PII)
+
+# Logs with timestamps (keep example only)
+lrz_etl_log.json
+
+# Editor
+.vscode/
+.idea/
+*.swp

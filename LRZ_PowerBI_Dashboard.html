@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Little Red Zombies — Social Media Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --faint: #484f58;
+    --red: #E94560;
+    --gold: #FDCB6E;
+    --teal: #00B4D8;
+    --green: #00C48C;
+    --orange: #FF9A3C;
+    --li: #0077B5;
+    --ig: #E1306C;
+    --tw: #1DA1F2;
+    --as: #13AFF0;
+    --fb: #1877F2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.5; }
+
+  .shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo .skull { font-size: 22px; }
+  .sidebar-logo .brand { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 0.02em; line-height: 1.3; }
+  .sidebar-logo .sub { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+  .nav-section { padding: 12px 0 4px; }
+  .nav-label { font-size: 10px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em; padding: 0 18px; margin-bottom: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 18px; cursor: pointer; color: var(--muted); font-size: 12.5px; transition: all 0.15s; border-left: 2px solid transparent; }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-item.active { background: rgba(233,69,96,0.12); color: var(--red); border-left-color: var(--red); }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .plat-filter { padding: 12px 18px; border-top: 1px solid var(--border); margin-top: auto; }
+  .plat-filter .label { font-size: 10px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .plat-toggle { display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer; }
+  .plat-toggle input[type=checkbox] { accent-color: var(--red); width: 13px; height: 13px; cursor: pointer; }
+  .plat-toggle span { font-size: 12px; color: var(--muted); }
+  .plat-toggle:hover span { color: var(--text); }
+
+  /* MAIN */
+  .main { overflow-x: hidden; }
+
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .topbar-meta { font-size: 11px; color: var(--muted); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .period-select { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .updated-pill { background: rgba(0,196,140,0.12); color: var(--green); font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 600; }
+
+  .content { padding: 20px 24px; }
+
+  /* ALERT STRIP */
+  .alert-strip { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+  .alert-chip { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .chip-red { background: rgba(233,69,96,0.15); color: var(--red); border: 1px solid rgba(233,69,96,0.3); }
+  .chip-gold { background: rgba(253,203,110,0.12); color: var(--gold); border: 1px solid rgba(253,203,110,0.25); }
+  .chip-green { background: rgba(0,196,140,0.12); color: var(--green); border: 1px solid rgba(0,196,140,0.25); }
+  .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; border-top: 3px solid transparent; transition: transform 0.15s; cursor: default; }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-plat { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .kpi-followers { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .kpi-label { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .kpi-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .kpi-eng { font-size: 11px; color: var(--muted); }
+  .kpi-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+  .badge-up { background: rgba(0,196,140,0.15); color: var(--green); }
+  .badge-down { background: rgba(233,69,96,0.15); color: var(--red); }
+  .badge-mid { background: rgba(253,203,110,0.12); color: var(--gold); }
+
+  /* CHARTS ROW */
+  .charts-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .chart-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .chart-sub { font-size: 10px; color: var(--muted); margin-bottom: 14px; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* BOTTOM ROW */
+  .bottom-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; margin-bottom: 16px; }
+
+  /* TABLE */
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  table.posts-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.posts-table th { text-align: left; padding: 6px 8px; color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid var(--border); font-weight: 600; }
+  table.posts-table td { padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  table.posts-table tr:last-child td { border-bottom: none; }
+  table.posts-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .plat-badge { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 9px; font-weight: 700; color: #fff; }
+
+  /* CONTENT MIX */
+  .mix-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .mix-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .mix-label { font-size: 11px; color: var(--text); width: 140px; flex-shrink: 0; }
+  .mix-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+  .mix-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .mix-pct { font-size: 11px; font-weight: 700; width: 32px; text-align: right; flex-shrink: 0; }
+
+  /* PRIORITY TABLE */
+  .priority-section { margin-bottom: 16px; }
+  .section-header { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .pri-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .pri-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; }
+  .pri-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .pri-title { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .pri-body { font-size: 10px; color: var(--muted); line-height: 1.5; }
+
+  /* SCORECARD */
+  .score-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .score-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .score-row:last-child { border-bottom: none; }
+  .score-plat { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--text); }
+  .score-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .score-metrics { display: flex; gap: 14px; }
+  .score-metric { text-align: center; }
+  .score-val { font-size: 12px; font-weight: 700; }
+  .score-lbl { font-size: 9px; color: var(--faint); }
+  .score-bar-wrap { width: 60px; }
+  .score-bar-bg { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; }
+  .score-bar-fg { height: 4px; border-radius: 2px; }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row, .bottom-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="skull">🧟</div>
+      <div class="brand">Little Red Zombies</div>
+      <div class="sub">Social Media Intelligence</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Views</div>
+      <div class="nav-item active" onclick="switchView('overview')">
+        <div class="nav-dot" style="background:var(--red)"></div> Overview
+      </div>
+      <div class="nav-item" onclick="switchView('trends')">
+        <div class="nav-dot" style="background:var(--teal)"></div> Follower Trends
+      </div>
+      <div class="nav-item" onclick="switchView('posts')">
+        <div class="nav-dot" style="background:var(--gold)"></div> Top Posts
+      </div>
+      <div class="nav-item" onclick="switchView('scorecard')">
+        <div class="nav-dot" style="background:var(--green)"></div> Platform Scorecard
+      </div>
+    </div>
+
+    <div class="plat-filter">
+      <div class="label">Filter Platforms</div>
+      <label class="plat-toggle"><input type="checkbox" checked onchange="togglePlatform('linkedin',this)"><span style="color:#0077B5;font-weight:600">LinkedIn</span></label>
+      <label class="plat-toggle"><input type="checkbox" checked onchange="togglePlatform('instagram',this)"><span style="color:#E1306C;font-weight:600">Instagram</span></label>
+      <label class="plat-toggle"><input type="checkbox" checked onchange="togglePlatform('twitter',this)"><span style="color:#1DA1F2;font-weight:600">X / Twitter</span></label>
+      <label class="plat-toggle"><input type="checkbox" checked onchange="togglePlatform('artstation',this)"><span style="color:#13AFF0;font-weight:600">ArtStation</span></label>
+      <label class="plat-toggle"><input type="checkbox" checked onchange="togglePlatform('facebook',this)"><span style="color:#1877F2;font-weight:600">Facebook</span></label>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="view-title">Overview Dashboard</div>
+        <div class="topbar-meta">Jan 2024 – Apr 2026 &nbsp;·&nbsp; Hyderabad, India &nbsp;·&nbsp; AAA 3D Character Outsourcing</div>
+      </div>
+      <div class="topbar-right">
+        <select class="period-select" onchange="changePeriod(this.value)">
+          <option value="6">Last 6 Months</option>
+          <option value="12">Last 12 Months</option>
+          <option value="28" selected>All Time (28 mo)</option>
+        </select>
+        <div class="updated-pill">● Live May 2026</div>
+      </div>
+    </div>
+
+    <div class="content" id="content-area">
+      <!-- Injected by JS -->
+    </div>
+
+  </main>
+</div>
+
+<script>
+const PLAT_COLORS = {
+  linkedin: '#0077B5', instagram: '#E1306C',
+  twitter: '#1DA1F2', artstation: '#13AFF0', facebook: '#1877F2'
+};
+const PLAT_NAMES = {
+  linkedin: 'LinkedIn', instagram: 'Instagram',
+  twitter: 'X/Twitter', artstation: 'ArtStation', facebook: 'Facebook'
+};
+
+const MONTHS_ALL = [
+  'Jan 24','Feb 24','Mar 24','Apr 24','May 24','Jun 24',
+  'Jul 24','Aug 24','Sep 24','Oct 24','Nov 24','Dec 24',
+  'Jan 25','Feb 25','Mar 25','Apr 25','May 25','Jun 25',
+  'Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25',
+  'Jan 26','Feb 26','Mar 26','Apr 26'
+];
+
+const DATA = {
+  linkedin:   { followers: [3800,3980,4160,4320,4510,4680,4870,5050,5240,5430,5620,5830,6050,6280,6500,6740,6980,7220,7460,7700,7940,8100,8230,8380,8520,8664,8820,9000], engRate: 4.1, postsPerMo: 3.8, reach: 14200, priority: 'HIGH' },
+  instagram:  { followers: [2350,2420,2480,2530,2600,2660,2720,2780,2850,2890,2940,2970,3000,3020,3050,3070,3090,2990,3030,2972,2930,2972,3010,3048,3087,3124,3160,3195], engRate: 3.8, postsPerMo: 4.2, reach: 5600, priority: 'MEDIUM' },
+  twitter:    { followers: [940,960,978,994,1010,1024,1038,1050,1062,1072,1082,1092,1100,1108,1118,1128,1140,1150,1162,1175,1190,1207,1220,1235,1250,1265,1278,1290], engRate: 1.2, postsPerMo: 1.5, reach: 1800, priority: 'HIGH RISK' },
+  artstation: { followers: [3200,3270,3356,3442,3527,3603,3679,3755,3820,3884,3948,4022,4106,4190,4274,4358,4441,4514,4574,4634,4694,4762,4838,4890,4938,4988,5056,5128], engRate: 5.6, postsPerMo: 2.0, reach: 9800, priority: 'HEALTHY' },
+  facebook:   { followers: [1820,1850,1878,1904,1930,1952,1974,1996,2014,2030,2048,2064,2082,2100,2116,2132,2148,2160,2172,2182,2192,2200,2206,2212,2218,2224,2230,2238], engRate: 0.8, postsPerMo: 1.8, reach: 2200, priority: 'LOW' }
+};
+
+const TOP_POSTS = [
+  { plat:'linkedin',   date:'Jan 24 2024', theme:'Naughty Dog × TLOU2 Remastered Collab',      type:'Project',   imp:24800, eng:1242, er:'5.0%', notes:'Best ever post' },
+  { plat:'linkedin',   date:'Jan 31 2024', theme:'Rocksteady × Suicide Squad: KTJL',             type:'Project',   imp:21400, eng:1061, er:'4.9%', notes:'AAA reveal' },
+  { plat:'artstation', date:'Oct 15 2024', theme:'Alan Wake II — Full Character Portfolio',       type:'Portfolio', imp:19600, eng:1372, er:'7.0%', notes:'ArtStation peak' },
+  { plat:'linkedin',   date:'Mar 12 2025', theme:'Obsidian × Avowed Characters Reveal',          type:'Project',   imp:18200, eng:966,  er:'5.3%', notes:'RPG hype wave' },
+  { plat:'linkedin',   date:'Nov 12 2025', theme:'Game Awards 2025 — Avowed Best RPG Nom.',      type:'Milestone', imp:17300, eng:1145, er:'6.6%', notes:'Viral moment' },
+  { plat:'instagram',  date:'Mar 14 2025', theme:'Avowed — Creature Art BTS',                    type:'BTS',       imp:11400, eng:848,  er:'7.4%', notes:'IG best post' },
+  { plat:'artstation', date:'Dec 02 2025', theme:'Hunt: Showdown — Creature Art Dump',           type:'Portfolio', imp:14200, eng:1127, er:'7.9%', notes:'High saves' },
+  { plat:'linkedin',   date:'Apr 01 2026', theme:'Avowed — Creature Art (Second Release)',       type:'Project',   imp:12400, eng:812,  er:'6.5%', notes:'Latest post' },
+  { plat:'instagram',  date:'Feb 20 2026', theme:'Hiring — Senior Character Artist',             type:'Hiring',    imp:7800,  eng:386,  er:'4.9%', notes:'Hiring spike' },
+  { plat:'twitter',    date:'Jan 24 2024', theme:'TLOU2 Remastered announcement repost',         type:'Repost',    imp:4200,  eng:275,  er:'6.5%', notes:'X/Twitter best' },
+];
+
+const CONTENT_MIX = [
+  { label:'Project Showcases', pct:42, color:'#E94560' },
+  { label:'Hiring & Recruitment', pct:18, color:'#FDCB6E' },
+  { label:'Industry Events', pct:14, color:'#00B4D8' },
+  { label:'Behind the Scenes', pct:13, color:'#0077B5' },
+  { label:'Milestones & Awards', pct:9, color:'#00C48C' },
+  { label:'General / Other', pct:4, color:'#8b949e' },
+];
+
+let activePlatforms = new Set(['linkedin','instagram','twitter','artstation','facebook']);
+let currentView = 'overview';
+let currentPeriod = 28;
+let charts = {};
+
+function getPeriodData(arr) {
+  return arr.slice(-currentPeriod);
+}
+function getPeriodMonths() {
+  return MONTHS_ALL.slice(-currentPeriod);
+}
+
+function fmt(n) { return n >= 1000 ? (n/1000).toFixed(1)+'K' : n.toString(); }
+function fmtN(n) { return n.toLocaleString(); }
+
+function togglePlatform(key, el) {
+  if (el.checked) activePlatforms.add(key); else activePlatforms.delete(key);
+  renderView();
+}
+function changePeriod(v) {
+  currentPeriod = parseInt(v);
+  renderView();
+}
+function switchView(v) {
+  currentView = v;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  const titles = { overview:'Overview Dashboard', trends:'Follower Trends', posts:'Top Posts Analysis', scorecard:'Platform Scorecard' };
+  document.getElementById('view-title').textContent = titles[v];
+  renderView();
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  charts = {};
+}
+
+function renderView() {
+  destroyCharts();
+  const ca = document.getElementById('content-area');
+  if (currentView === 'overview') ca.innerHTML = buildOverview();
+  else if (currentView === 'trends') ca.innerHTML = buildTrends();
+  else if (currentView === 'posts') ca.innerHTML = buildPosts();
+  else if (currentView === 'scorecard') ca.innerHTML = buildScorecard();
+  requestAnimationFrame(() => {
+    if (currentView === 'overview') initOverviewCharts();
+    else if (currentView === 'trends') initTrendCharts();
+    else if (currentView === 'posts') initPostCharts();
+    else if (currentView === 'scorecard') initScorecardCharts();
+  });
+}
+
+/* ── OVERVIEW ── */
+function buildOverview() {
+  const alerts = `
+  <div class="alert-strip">
+    <div class="alert-chip chip-red"><div class="chip-dot"></div>X/Twitter eng. at 1.2% — below 2% benchmark</div>
+    <div class="alert-chip chip-red"><div class="chip-dot"></div>Facebook organic reach declining</div>
+    <div class="alert-chip chip-gold"><div class="chip-dot"></div>Instagram growth slowing (+1.9%/mo)</div>
+    <div class="alert-chip chip-green"><div class="chip-dot"></div>ArtStation eng. rate 5.6% — top platform</div>
+    <div class="alert-chip chip-green"><div class="chip-dot"></div>LinkedIn driving B2B pipeline</div>
+  </div>`;
+
+  const kpiCards = ['linkedin','instagram','twitter','artstation','facebook'].map(k => {
+    const d = DATA[k];
+    const cur = d.followers.at(-1);
+    const prev = d.followers.at(-2);
+    const momPct = (((cur-prev)/prev)*100).toFixed(1);
+    const isActive = activePlatforms.has(k);
+    const pri = d.priority;
+    const priCls = pri==='HIGH'||pri==='HIGH RISK' ? 'badge-down' : pri==='HEALTHY' ? 'badge-up' : 'badge-mid';
+    return `<div class="kpi-card" style="border-top-color:${PLAT_COLORS[k]};opacity:${isActive?1:0.35}">
+      <div class="kpi-plat" style="color:${PLAT_COLORS[k]}">${PLAT_NAMES[k]}</div>
+      <div class="kpi-followers">${fmtN(cur)}</div>
+      <div class="kpi-label">followers</div>
+      <div class="kpi-row">
+        <div class="kpi-eng">${d.engRate}% eng</div>
+        <div class="kpi-badge ${priCls}">▲ +${momPct}%</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const chartsRow = `
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Follower growth — all platforms</div>
+      <div class="chart-sub">Monthly trend, ${currentPeriod} months</div>
+      <div class="chart-legend" id="growth-legend"></div>
+      <div style="position:relative;height:220px"><canvas id="growthChart" role="img" aria-label="Line chart showing follower growth across platforms"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Engagement rate benchmark</div>
+      <div class="chart-sub">vs. industry average (dashed line)</div>
+      <div style="position:relative;height:260px"><canvas id="engChart" role="img" aria-label="Bar chart of engagement rates by platform"></canvas></div>
+    </div>
+  </div>`;
+
+  const bottomRow = `
+  <div class="bottom-row">
+    <div class="table-card">
+      <div class="chart-title" style="margin-bottom:10px">Top performing posts — all time</div>
+      <table class="posts-table">
+        <thead><tr><th>Platform</th><th>Theme</th><th>Impr.</th><th>Eng Rate</th></tr></thead>
+        <tbody>
+          ${TOP_POSTS.slice(0,7).map(p => `<tr>
+            <td><span class="plat-badge" style="background:${PLAT_COLORS[p.plat]}">${PLAT_NAMES[p.plat]}</span></td>
+            <td style="color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.theme}</td>
+            <td style="font-weight:700;color:var(--text)">${fmtN(p.imp)}</td>
+            <td style="font-weight:700;color:${parseFloat(p.er)>=5?'var(--green)':parseFloat(p.er)>=3?'var(--gold)':'var(--red)'}">${p.er}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="mix-card">
+      <div class="chart-title" style="margin-bottom:14px">Content mix — all platforms</div>
+      ${CONTENT_MIX.map(m => `
+      <div class="mix-row">
+        <div class="mix-label">${m.label}</div>
+        <div class="mix-bar-track"><div class="mix-bar-fill" style="width:${m.pct}%;background:${m.color}"></div></div>
+        <div class="mix-pct" style="color:${m.color}">${m.pct}%</div>
+      </div>`).join('')}
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="chart-title" style="margin-bottom:10px">Reach by platform (avg/post)</div>
+        <div style="position:relative;height:110px"><canvas id="reachChart" role="img" aria-label="Bar chart of average reach per post by platform"></canvas></div>
+      </div>
+    </div>
+  </div>`;
+
+  const priorities = `
+  <div style="margin-bottom:16px">
+    <div class="section-header">Priority actions</div>
+    <div class="pri-grid">
+      <div class="pri-card"><div class="pri-icon">🔴</div><div><div class="pri-title">X/Twitter — content or abandon</div><div class="pri-body">Eng. rate 1.2% (benchmark: 2%). Post frequency at 1.5/mo. Commit to 4+/week or de-invest entirely.</div></div></div>
+      <div class="pri-card"><div class="pri-icon">🔴</div><div><div class="pri-title">Facebook — minimal effort mode</div><div class="pri-body">0.8% eng, lowest ROI. Automate reposts from Instagram only. Do not invest further.</div></div></div>
+      <div class="pri-card"><div class="pri-icon">🟡</div><div><div class="pri-title">Instagram — inject Reels</div><div class="pri-body">Follower growth at +1.9%/mo and decelerating. Test Reels + gaming creator collabs to revive growth.</div></div></div>
+      <div class="pri-card"><div class="pri-icon">💡</div><div><div class="pri-title">Cross-post ArtStation → LinkedIn</div><div class="pri-body">ArtStation posts get 5.6% eng. Systematic cross-posting to LinkedIn adds ~38% total reach per project.</div></div></div>
+    </div>
+  </div>`;
+
+  return alerts + `<div class="kpi-grid">${kpiCards}</div>` + chartsRow + bottomRow + priorities;
+}
+
+function initOverviewCharts() {
+  const months = getPeriodMonths();
+  const datasets = [...activePlatforms].map(k => ({
+    label: PLAT_NAMES[k],
+    data: getPeriodData(DATA[k].followers),
+    borderColor: PLAT_COLORS[k],
+    backgroundColor: 'transparent',
+    tension: 0.35,
+    borderWidth: 2,
+    pointRadius: 0,
+    pointHoverRadius: 4
+  }));
+
+  const legend = document.getElementById('growth-legend');
+  if (legend) {
+    legend.innerHTML = [...activePlatforms].map(k =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${PLAT_COLORS[k]}"></div>${PLAT_NAMES[k]}</div>`
+    ).join('');
+  }
+
+  charts.growth = new Chart(document.getElementById('growthChart'), {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+      scales: {
+        x: { ticks: { color: '#8b949e', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b949e', font: { size: 10 }, callback: v => fmt(v) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  const engData = [...activePlatforms].map(k => ({ plat: PLAT_NAMES[k], val: DATA[k].engRate, color: PLAT_COLORS[k] }));
+  charts.eng = new Chart(document.getElementById('engChart'), {
+    type: 'bar',
+    data: {
+      labels: engData.map(d => d.plat),
+      datasets: [{
+        label: 'Eng Rate %',
+        data: engData.map(d => d.val),
+        backgroundColor: engData.map(d => d.color + 'CC'),
+        borderColor: engData.map(d => d.color),
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        annotation: {},
+        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y}%` } }
+      },
+      scales: {
+        x: { ticks: { color: '#8b949e', font: { size: 10 } }, grid: { display: false } },
+        y: { max: 8, ticks: { color: '#8b949e', font: { size: 10 }, callback: v => v+'%' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  const reachData = [...activePlatforms].map(k => ({ plat: PLAT_NAMES[k], val: DATA[k].reach, color: PLAT_COLORS[k] }));
+  charts.reach = new Chart(document.getElementById('reachChart'), {
+    type: 'bar',
+    data: {
+      labels: reachData.map(d => d.plat),
+      datasets: [{ data: reachData.map(d => d.val), backgroundColor: reachData.map(d => d.color+'99'), borderColor: reachData.map(d => d.color), borderWidth: 1, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtN(ctx.parsed.y)+' avg reach' } } },
+      scales: {
+        x: { ticks: { color: '#8b949e', font: { size: 9 } }, grid: { display: false } },
+        y: { ticks: { color: '#8b949e', font: { size: 9 }, callback: v => fmt(v) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+/* ── TRENDS VIEW ── */
+function buildTrends() {
+  return `
+  <div class="chart-card" style="margin-bottom:14px">
+    <div class="chart-title">Follower growth trajectory — detailed view</div>
+    <div class="chart-sub">All active platforms · ${currentPeriod} months · hover for values</div>
+    <div class="chart-legend" id="trend-legend"></div>
+    <div style="position:relative;height:320px"><canvas id="trendChart" role="img" aria-label="Detailed line chart of follower growth"></canvas></div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Month-over-month growth rate (%)</div>
+      <div class="chart-sub">LinkedIn highlighted — leading growth platform</div>
+      <div style="position:relative;height:200px"><canvas id="momChart" role="img" aria-label="MoM growth rate chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Total audience size — cumulative</div>
+      <div class="chart-sub">All platforms combined (active filters applied)</div>
+      <div style="position:relative;height:200px"><canvas id="totalChart" role="img" aria-label="Total combined followers chart"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-top:14px">
+    <div class="chart-title">Growth events timeline</div>
+    <div class="chart-sub">Key project announcements that drove spikes</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">
+      ${[
+        {date:'Jan 2024',event:'TLOU2 Remastered reveal',lift:'+24%',color:'var(--li)'},
+        {date:'Oct 2024',event:'Alan Wake II portfolio drop',lift:'+18%',color:'var(--as)'},
+        {date:'Mar 2025',event:'Avowed × Obsidian reveal',lift:'+21%',color:'var(--li)'},
+        {date:'Nov 2025',event:'Game Awards — Best RPG nom.',lift:'+31%',color:'var(--red)'},
+      ].map(e => `<div style="background:var(--surface2);border-radius:8px;padding:12px;border-left:3px solid ${e.color}">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${e.date}</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">${e.event}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--green)">${e.lift}</div>
+        <div style="font-size:9px;color:var(--muted)">LinkedIn impression lift</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function initTrendCharts() {
+  const months = getPeriodMonths();
+  const datasets = [...activePlatforms].map(k => ({
+    label: PLAT_NAMES[k],
+    data: getPeriodData(DATA[k].followers),
+    borderColor: PLAT_COLORS[k],
+    backgroundColor: 'transparent',
+    tension: 0.35,
+    borderWidth: 2.5,
+    pointRadius: 0,
+    pointHoverRadius: 5
+  }));
+  const legend = document.getElementById('trend-legend');
+  if (legend) legend.innerHTML = [...activePlatforms].map(k =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${PLAT_COLORS[k]}"></div>${PLAT_NAMES[k]}</div>`).join('');
+
+  charts.trend = new Chart(document.getElementById('trendChart'), {
+    type:'line', data:{ labels:months, datasets },
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:'#8b949e', font:{ size:10 }, maxRotation:45, autoSkip:true, maxTicksLimit:12 }, grid:{ color:'rgba(255,255,255,0.04)' } },
+        y:{ ticks:{ color:'#8b949e', font:{ size:10 }, callback: v=>fmt(v) }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // MoM chart — LinkedIn only
+  const liData = getPeriodData(DATA.linkedin.followers);
+  const momData = liData.slice(1).map((v,i) => +((((v - liData[i]) / liData[i]) * 100).toFixed(2)));
+  charts.mom = new Chart(document.getElementById('momChart'), {
+    type:'bar', data:{ labels:months.slice(1),
+      datasets:[{ label:'LinkedIn MoM %', data:momData,
+        backgroundColor: momData.map(v => v>=0 ? '#0077B599' : '#E9456099'),
+        borderColor: momData.map(v => v>=0 ? '#0077B5' : '#E94560'),
+        borderWidth:1, borderRadius:3 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ctx.parsed.y.toFixed(2)+'%' } } },
+      scales:{
+        x:{ ticks:{ color:'#8b949e', font:{ size:9 }, maxRotation:45, autoSkip:true, maxTicksLimit:8 }, grid:{ display:false } },
+        y:{ ticks:{ color:'#8b949e', font:{ size:9 }, callback: v=>v+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Total combined
+  const totalByMonth = months.map((m,i) => {
+    let sum = 0;
+    activePlatforms.forEach(k => {
+      const arr = getPeriodData(DATA[k].followers);
+      sum += arr[i] || 0;
+    });
+    return sum;
+  });
+  charts.total = new Chart(document.getElementById('totalChart'), {
+    type:'line', data:{ labels:months,
+      datasets:[{ label:'Total Followers', data:totalByMonth,
+        borderColor:'#E94560', backgroundColor:'rgba(233,69,96,0.08)',
+        tension:0.35, borderWidth:2.5, fill:true, pointRadius:0, pointHoverRadius:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:'#8b949e', font:{ size:9 }, maxRotation:0, autoSkip:true, maxTicksLimit:8 }, grid:{ color:'rgba(255,255,255,0.04)' } },
+        y:{ ticks:{ color:'#8b949e', font:{ size:9 }, callback: v=>fmt(v) }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+/* ── POSTS VIEW ── */
+function buildPosts() {
+  const filtered = TOP_POSTS.filter(p => activePlatforms.has(p.plat));
+  return `
+  <div class="charts-row" style="margin-bottom:14px">
+    <div class="chart-card">
+      <div class="chart-title">Top posts — impressions</div>
+      <div class="chart-sub">Ranked by total impressions (filtered by platform)</div>
+      <div style="position:relative;height:${filtered.length*44+60}px"><canvas id="postsBar" role="img" aria-label="Horizontal bar chart of top posts by impressions"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Post type performance</div>
+      <div class="chart-sub">Avg impressions by content type</div>
+      <div style="position:relative;height:260px"><canvas id="typeChart" role="img" aria-label="Bar chart of avg impressions by post type"></canvas></div>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="chart-title" style="margin-bottom:12px">Full top posts log</div>
+    <table class="posts-table">
+      <thead><tr><th>#</th><th>Platform</th><th>Date</th><th style="min-width:200px">Theme</th><th>Type</th><th>Impressions</th><th>Eng.</th><th>Eng Rate</th><th>Notes</th></tr></thead>
+      <tbody>${filtered.map((p,i) => `<tr>
+        <td style="color:var(--faint)">${i+1}</td>
+        <td><span class="plat-badge" style="background:${PLAT_COLORS[p.plat]}">${PLAT_NAMES[p.plat]}</span></td>
+        <td style="color:var(--muted)">${p.date}</td>
+        <td style="color:var(--text);font-weight:500">${p.theme}</td>
+        <td style="color:var(--muted)">${p.type}</td>
+        <td style="font-weight:700;color:var(--text)">${fmtN(p.imp)}</td>
+        <td style="color:var(--muted)">${fmtN(p.eng)}</td>
+        <td style="font-weight:700;color:${parseFloat(p.er)>=5?'var(--green)':parseFloat(p.er)>=3?'var(--gold)':'var(--red)'}">${p.er}</td>
+        <td style="color:var(--faint);font-style:italic">${p.notes}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function initPostCharts() {
+  const filtered = TOP_POSTS.filter(p => activePlatforms.has(p.plat));
+  charts.postsBar = new Chart(document.getElementById('postsBar'), {
+    type:'bar',
+    data:{
+      labels: filtered.map(p => p.theme.length>40 ? p.theme.slice(0,40)+'…' : p.theme),
+      datasets:[{ label:'Impressions', data: filtered.map(p=>p.imp),
+        backgroundColor: filtered.map(p=>PLAT_COLORS[p.plat]+'BB'),
+        borderColor: filtered.map(p=>PLAT_COLORS[p.plat]),
+        borderWidth:1, borderRadius:3 }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => fmtN(ctx.parsed.x)+' impressions' } } },
+      scales:{
+        x:{ ticks:{ color:'#8b949e', font:{size:9}, callback: v=>fmt(v) }, grid:{ color:'rgba(255,255,255,0.04)' } },
+        y:{ ticks:{ color:'#8b949e', font:{size:9} }, grid:{ display:false } }
+      }
+    }
+  });
+
+  const types = {};
+  filtered.forEach(p => {
+    if (!types[p.type]) types[p.type] = { total:0, count:0 };
+    types[p.type].total += p.imp;
+    types[p.type].count++;
+  });
+  const typeLabels = Object.keys(types);
+  const typeAvg = typeLabels.map(t => Math.round(types[t].total / types[t].count));
+  const typeColors = ['#E94560','#FDCB6E','#00B4D8','#00C48C','#FF9A3C','#1DA1F2','#8b949e'];
+  charts.type = new Chart(document.getElementById('typeChart'), {
+    type:'bar',
+    data:{ labels:typeLabels, datasets:[{ label:'Avg Impressions', data:typeAvg,
+      backgroundColor: typeColors.map(c=>c+'BB'), borderColor:typeColors, borderWidth:1, borderRadius:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => fmtN(ctx.parsed.y)+' avg' } } },
+      scales:{
+        x:{ ticks:{ color:'#8b949e', font:{size:10} }, grid:{ display:false } },
+        y:{ ticks:{ color:'#8b949e', font:{size:9}, callback: v=>fmt(v) }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+/* ── SCORECARD VIEW ── */
+function buildScorecard() {
+  const platKeys = [...activePlatforms];
+  const benchmarks = { linkedin:2.0, instagram:3.0, twitter:2.0, artstation:4.0, facebook:1.5 };
+  const scoreRows = platKeys.map(k => {
+    const d = DATA[k];
+    const bench = benchmarks[k];
+    const score = Math.min(100, Math.round((d.engRate / bench) * 50 + (d.postsPerMo / 5) * 25 + ((d.followers.at(-1) / 10000) * 25)));
+    const momGrowth = (((d.followers.at(-1) - d.followers.at(-2)) / d.followers.at(-2)) * 100).toFixed(1);
+    return { k, d, bench, score, momGrowth };
+  });
+
+  return `
+  <div style="margin-bottom:16px">
+    <div class="section-header">Overall health scores</div>
+    <div class="score-card">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:8px">
+        <div style="font-size:10px;color:var(--faint);text-align:center;text-transform:uppercase;letter-spacing:0.07em">Platform</div>
+        <div style="font-size:10px;color:var(--faint);text-align:center;text-transform:uppercase;letter-spacing:0.07em">Health Score</div>
+        <div style="font-size:10px;color:var(--faint);text-align:center;text-transform:uppercase;letter-spacing:0.07em">Eng vs Benchmark</div>
+        <div style="font-size:10px;color:var(--faint);text-align:center;text-transform:uppercase;letter-spacing:0.07em">MoM Growth</div>
+      </div>
+      ${scoreRows.map(({k,d,bench,score,momGrowth}) => {
+        const aboveBench = d.engRate >= bench;
+        const scoreColor = score >= 70 ? 'var(--green)' : score >= 45 ? 'var(--gold)' : 'var(--red)';
+        return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:9px;height:9px;border-radius:50%;background:${PLAT_COLORS[k]}"></div>
+            <span style="font-size:12px;font-weight:600;color:var(--text)">${PLAT_NAMES[k]}</span>
+          </div>
+          <div style="text-align:center">
+            <span style="font-size:18px;font-weight:700;color:${scoreColor}">${score}</span>
+            <span style="font-size:10px;color:var(--muted)">/100</span>
+            <div style="margin-top:4px;height:4px;background:rgba(255,255,255,0.07);border-radius:2px"><div style="height:4px;border-radius:2px;background:${scoreColor};width:${score}%"></div></div>
+          </div>
+          <div style="text-align:center">
+            <span style="font-size:13px;font-weight:700;color:${aboveBench?'var(--green)':'var(--red)'}">${d.engRate}%</span>
+            <span style="font-size:10px;color:var(--muted)"> vs ${bench}% bench</span>
+            <div style="font-size:10px;color:${aboveBench?'var(--green)':'var(--red)'}">${aboveBench?'▲ Above':'▼ Below'}</div>
+          </div>
+          <div style="text-align:center;font-size:13px;font-weight:700;color:${parseFloat(momGrowth)>=2?'var(--green)':parseFloat(momGrowth)>=0.5?'var(--gold)':'var(--red)'}">
+            +${momGrowth}%
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Engagement rate vs benchmark</div>
+      <div class="chart-sub">Actual (solid) vs industry benchmark (dashed reference)</div>
+      <div style="position:relative;height:240px"><canvas id="benchChart" role="img" aria-label="Grouped bar chart comparing engagement rate to benchmark"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Posts per month — activity level</div>
+      <div class="chart-sub">Recommended minimum: 4/month for growth</div>
+      <div style="position:relative;height:240px"><canvas id="postsPerMoChart" role="img" aria-label="Bar chart of posts per month by platform"></canvas></div>
+    </div>
+  </div>
+  <div class="table-card" style="margin-top:14px">
+    <div class="chart-title" style="margin-bottom:12px">Detailed scorecard — all metrics</div>
+    <table class="posts-table">
+      <thead><tr><th>Platform</th><th>Followers</th><th>MoM Growth</th><th>Posts/Mo</th><th>Eng Rate</th><th>Benchmark</th><th>Avg Reach</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>${[
+        {k:'linkedin',   rec:'Increase to 5 posts/mo. More client showcases.'},
+        {k:'instagram',  rec:'Test Reels format. Collaborate with game artists.'},
+        {k:'twitter',    rec:'Commit 4+/week or deprioritize. No middle ground.'},
+        {k:'artstation', rec:'Maintain quality. Add WIP breakdowns.'},
+        {k:'facebook',   rec:'Auto-repost from Instagram only. Minimal effort.'},
+      ].filter(r => activePlatforms.has(r.k)).map(({k,rec}) => {
+        const d = DATA[k];
+        const cur = d.followers.at(-1);
+        const prev = d.followers.at(-2);
+        const mom = (((cur-prev)/prev)*100).toFixed(1);
+        const priColor = d.priority==='HIGH'||d.priority==='HIGH RISK' ? 'var(--red)' : d.priority==='HEALTHY' ? 'var(--green)' : d.priority==='MEDIUM' ? 'var(--gold)' : 'var(--muted)';
+        return `<tr>
+          <td><span class="plat-badge" style="background:${PLAT_COLORS[k]}">${PLAT_NAMES[k]}</span></td>
+          <td style="font-weight:700;color:var(--text)">${fmtN(cur)}</td>
+          <td style="color:${parseFloat(mom)>=2?'var(--green)':parseFloat(mom)>=0.5?'var(--gold)':'var(--red)'}">+${mom}%</td>
+          <td style="color:var(--muted)">${d.postsPerMo}</td>
+          <td style="font-weight:700;color:${d.engRate>=benchmarks[k]?'var(--green)':'var(--red)'}">${d.engRate}%</td>
+          <td style="color:var(--faint)">${benchmarks[k]}%</td>
+          <td style="color:var(--muted)">${fmtN(d.reach)}</td>
+          <td style="font-weight:700;color:${priColor}">${d.priority}</td>
+          <td style="color:var(--muted);font-size:10px">${rec}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+const benchmarks = { linkedin:2.0, instagram:3.0, twitter:2.0, artstation:4.0, facebook:1.5 };
+
+function initScorecardCharts() {
+  const keys = [...activePlatforms];
+  charts.bench = new Chart(document.getElementById('benchChart'), {
+    type:'bar',
+    data:{
+      labels: keys.map(k => PLAT_NAMES[k]),
+      datasets:[
+        { label:'Actual', data: keys.map(k => DATA[k].engRate),
+          backgroundColor: keys.map(k => PLAT_COLORS[k]+'BB'),
+          borderColor: keys.map(k => PLAT_COLORS[k]),
+          borderWidth:1, borderRadius:4 },
+        { label:'Benchmark', data: keys.map(k => benchmarks[k]),
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          borderColor: 'rgba(255,255,255,0.35)',
+          borderWidth: 1.5, borderDash:[4,3], borderRadius:4,
+          type:'bar' }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, labels:{ color:'#8b949e', font:{size:10}, boxWidth:10, boxHeight:10 } }, tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` } } },
+      scales:{
+        x:{ ticks:{ color:'#8b949e', font:{size:10} }, grid:{ display:false } },
+        y:{ max:8, ticks:{ color:'#8b949e', font:{size:9}, callback: v=>v+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  const PLAT_RECS = { linkedin:5, instagram:4, twitter:4, artstation:3, facebook:2 };
+  charts.ppm = new Chart(document.getElementById('postsPerMoChart'), {
+    type:'bar',
+    data:{
+      labels: keys.map(k => PLAT_NAMES[k]),
+      datasets:[
+        { label:'Current', data: keys.map(k=>DATA[k].postsPerMo),
+          backgroundColor: keys.map(k=>PLAT_COLORS[k]+'BB'), borderColor:keys.map(k=>PLAT_COLORS[k]),
+          borderWidth:1, borderRadius:4 },
+        { label:'Recommended', data: keys.map(k=>PLAT_RECS[k]),
+          backgroundColor:'rgba(255,255,255,0.05)', borderColor:'rgba(253,203,110,0.6)',
+          borderWidth:1.5, borderRadius:4 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, labels:{ color:'#8b949e', font:{size:10}, boxWidth:10, boxHeight:10 } } },
+      scales:{
+        x:{ ticks:{ color:'#8b949e', font:{size:10} }, grid:{ display:false } },
+        y:{ max:7, ticks:{ color:'#8b949e', font:{size:9} }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// Initial render
+renderView();
+</script>
+</body>
+</html>
